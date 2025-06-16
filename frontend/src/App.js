@@ -10,17 +10,6 @@ import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 
 import Dashboard from './Dashboard';
 
-const CATEGORIES = [
-  'Wildfires',
-  'Volcanoes',
-  'Floods',
-  'SevereStorms',
-  'Earthquakes',
-  'Landslides',
-  'SeaLakeIce',
-  'Drought'
-];
-
 const CATEGORY_COLORS = {
   Wildfires: 'red',
   Volcanoes: 'orange',
