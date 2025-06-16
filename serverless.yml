@@ -20,6 +20,19 @@ provider:
       Resource:
         - "arn:aws:dynamodb:us-east-1:*:table/SentinelEvents"
 
+package:
+  individually: true
+  excludeDevDependencies: true
+  patterns:
+    - '!node_modules/.bin/**'
+    - '!tests/**'
+    - '!*.md'
+    - '!*.log'
+    - '!docs/**'
+    - '!package-lock.json'
+    - '!webpack.config.js'
+    - '!frontend/**'  # Exclude frontend if present in the same repo
+
 functions:
   ingestEvents:
     handler: handler.ingest

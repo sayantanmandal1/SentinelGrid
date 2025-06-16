@@ -60,28 +60,35 @@ module.exports.ingest = async () => {
 
 module.exports.getEvents = async (event) => {
   const { category, limit } = event.queryStringParameters || {};
+  const parsedLimit = limit ? parseInt(limit) : 20;
 
   const params = {
     TableName: process.env.TABLE_NAME,
-    Limit: limit ? parseInt(limit) : 20,
   };
 
-  if (category) {
-    params.FilterExpression = "category = :c";
+  if (category && category !== 'All') {
+    params.FilterExpression = "#cat = :c";
+    params.ExpressionAttributeNames = {
+      "#cat": "category"
+    };
     params.ExpressionAttributeValues = {
-      ":c": category,
+      ":c": category
     };
   }
 
   try {
     const data = await dynamo.scan(params).promise();
+
+    // ✅ Apply the limit *after* filtering
+    const limited = data.Items.slice(0, parsedLimit);
+
     return {
       statusCode: 200,
       headers: {
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*",
       },
-      body: JSON.stringify(data.Items),
+      body: JSON.stringify(limited),
     };
   } catch (err) {
     console.error("Error fetching events", err);
@@ -91,3 +98,4 @@ module.exports.getEvents = async (event) => {
     };
   }
 };
+
