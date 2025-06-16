@@ -5,6 +5,11 @@ import 'leaflet-defaulticon-compatibility/dist/leaflet-defaulticon-compatibility
 import 'leaflet-defaulticon-compatibility';
 import axios from 'axios';
 
+import MarkerClusterGroup from '@changey/react-leaflet-markercluster';
+import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
+
+import Dashboard from './Dashboard';
+
 const CATEGORY_COLORS = {
   Wildfires: 'red',
   Volcanoes: 'orange',
@@ -20,48 +25,44 @@ function App() {
 
   useEffect(() => {
     axios.get('https://85319u635c.execute-api.us-east-1.amazonaws.com/dev/events?limit=100')
-      .then((res) => setEvents(res.data))
-      .catch((err) => console.error(err));
+      .then(res => setEvents(res.data))
+      .catch(err => console.error(err));
   }, []);
 
   const filtered = category === 'All' ? events : events.filter(e => e.category === category);
 
   return (
-    <div style={{ background: '#111', color: '#fff', height: '100vh', width: '100vw', overflow: 'hidden' }}>
-      <div style={{ padding: 10, background: '#222', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <h2 style={{ margin: 0 }}>🛰️ SentinelGrid Explorer</h2>
-        <select
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
-          style={{ padding: 8, borderRadius: 4 }}
-        >
-          <option value="All">All Categories</option>
-          {[...new Set(events.map(e => e.category))].map(cat => (
-            <option key={cat}>{cat}</option>
-          ))}
-        </select>
-      </div>
+    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
+      <Dashboard events={events} category={category} setCategory={setCategory} />
 
-      <MapContainer center={[20, 0]} zoom={2} style={{ height: '90vh', width: '100%' }}>
-        <TileLayer
-          attribution='&copy; OpenStreetMap contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
-        {filtered.map(event => (
-          <Marker
-            key={event.id}
-            position={[event.coordinates[1], event.coordinates[0]]}
-            pathOptions={{ color: CATEGORY_COLORS[event.category] || CATEGORY_COLORS.default }}
-          >
-            <Popup>
-              <strong>{event.title}</strong><br />
-              <em>{event.category}</em><br />
-              {new Date(event.date).toLocaleString()}<br />
-              <a href={event.link} target="_blank" rel="noreferrer">Details</a>
-            </Popup>
-          </Marker>
-        ))}
-      </MapContainer>
+      <div style={{ flex: 1 }}>
+        <MapContainer center={[20, 0]} zoom={2} style={{ height: '100%', width: '100%' }}>
+          <TileLayer
+            attribution='&copy; OpenStreetMap contributors'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
+
+          <MarkerClusterGroup>
+            {filtered.map(event => {
+              const coords = event.coordinates;
+              if (!coords || coords.length !== 2 || isNaN(coords[0]) || isNaN(coords[1])) return null;
+              return (
+                <Marker
+                  key={event.id}
+                  position={[coords[1], coords[0]]}
+                >
+                  <Popup>
+                    <strong>{event.title}</strong><br />
+                    <em>{event.category}</em><br />
+                    {new Date(event.date).toLocaleString()}<br />
+                    <a href={event.link} target="_blank" rel="noreferrer">Details</a>
+                  </Popup>
+                </Marker>
+              );
+            })}
+          </MarkerClusterGroup>
+        </MapContainer>
+      </div>
     </div>
   );
 }
