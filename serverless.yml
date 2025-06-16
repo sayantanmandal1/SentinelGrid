@@ -1,0 +1,56 @@
+service: sentinelgrid-ingestor
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  region: us-east-1
+  memorySize: 128
+  timeout: 60
+  stage: dev
+  environment:
+    TABLE_NAME: SentinelEvents
+  iamRoleStatements:
+    - Effect: "Allow"
+      Action:
+        - "dynamodb:BatchWriteItem"
+        - "dynamodb:PutItem"
+        - "dynamodb:GetItem"
+        - "dynamodb:Scan"
+        - "dynamodb:UpdateItem"
+      Resource:
+        - "arn:aws:dynamodb:us-east-1:*:table/SentinelEvents"
+
+functions:
+  ingestEvents:
+    handler: handler.ingest
+    events:
+      - schedule: rate(1 hour)
+
+  getEvents:
+    handler: handler.getEvents
+    environment:
+      TABLE_NAME: SentinelEvents
+    events:
+      - http:
+          path: events
+          method: get
+          cors: true
+          request:
+            parameters:
+              querystrings:
+                category: false
+                limit: false
+
+resources:
+  Resources:
+    SentinelEvents:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: SentinelEvents
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST

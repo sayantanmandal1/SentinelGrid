@@ -1,0 +1,11 @@
+{
+  "name": "sentinelgrid-ingestor",
+  "version": "1.0.0",
+  "description": "Ingest global disaster events into DynamoDB",
+  "main": "handler.js",
+  "dependencies": {
+    "axios": "^1.6.0",
+    "uuid": "^9.0.0",
+    "aws-sdk": "^2.1483.0"
+  }
+}
