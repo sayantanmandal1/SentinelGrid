@@ -21,7 +21,6 @@ const CATEGORIES = [
   'Drought'
 ];
 
-// Extend color mapping for categories
 const CATEGORY_COLORS = {
   Wildfires: 'red',
   Volcanoes: 'orange',
@@ -40,27 +39,18 @@ function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchCategoryEvents = async () => {
+    const fetchEvents = async () => {
       try {
-        const requests = CATEGORIES.map(cat =>
-          axios.get(`https://85319u635c.execute-api.us-east-1.amazonaws.com/dev/events?limit=100&category=${encodeURIComponent(cat)}`)
-        );
-
-        const responses = await Promise.allSettled(requests);
-
-        const allEvents = responses
-          .filter(r => r.status === 'fulfilled')
-          .flatMap(r => r.value.data);
-
-        setEvents(allEvents);
+        const response = await axios.get('https://85319u635c.execute-api.us-east-1.amazonaws.com/dev/events');
+        setEvents(response.data);
       } catch (error) {
-        console.error('Error fetching balanced events:', error);
+        console.error('Error fetching events:', error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchCategoryEvents();
+    fetchEvents();
   }, []);
 
   const filtered = category === 'All'

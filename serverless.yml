@@ -8,7 +8,7 @@ provider:
   timeout: 60
   stage: dev
   environment:
-    TABLE_NAME: SentinelEvents
+    TABLE_NAME: SentinelEventsV2
   iamRoleStatements:
     - Effect: "Allow"
       Action:
@@ -18,7 +18,7 @@ provider:
         - "dynamodb:Scan"
         - "dynamodb:UpdateItem"
       Resource:
-        - "arn:aws:dynamodb:us-east-1:*:table/SentinelEvents"
+        - "arn:aws:dynamodb:us-east-1:*:table/SentinelEventsV2"
 
 package:
   individually: true
@@ -42,7 +42,7 @@ functions:
   getEvents:
     handler: handler.getEvents
     environment:
-      TABLE_NAME: SentinelEvents
+      TABLE_NAME: SentinelEventsV2
     events:
       - http:
           path: events
@@ -59,7 +59,7 @@ resources:
     SentinelEvents:
       Type: AWS::DynamoDB::Table
       Properties:
-        TableName: SentinelEvents
+        TableName: SentinelEventsV2
         AttributeDefinitions:
           - AttributeName: id
             AttributeType: S

@@ -5,33 +5,75 @@ const { v4: uuidv4 } = require("uuid");
 const dynamo = new AWS.DynamoDB.DocumentClient();
 const EONET_URL = "https://eonet.gsfc.nasa.gov/api/v3/events";
 
+// Frontend-compatible category names
+const CATEGORIES = [
+  "Wildfires",
+  "Volcanoes",
+  "Floods",
+  "SevereStorms",
+  "Earthquakes",
+  "Landslides",
+  "SeaLakeIce",
+  "Drought"
+];
+
+// Mapping from EONET raw categories to frontend-compatible format
+const CATEGORY_NORMALIZATION = {
+  "Severe Storms": "SevereStorms",
+  "Sea and Lake Ice": "SeaLakeIce",
+};
+
 module.exports.ingest = async () => {
   try {
-    const { data } = await axios.get(EONET_URL);
-    const events = data.events || [];
+    console.log("TABLE_NAME from env:", process.env.TABLE_NAME);
+    const { data } = await axios.get(`${EONET_URL}?limit=2000`);
+    const allEvents = data.events || [];
 
-    const writeOps = events.map((event) => ({
-      PutRequest: {
-        Item: {
-          id: uuidv4(),
-          title: event.title,
-          category: event.categories?.[0]?.title || "Uncategorized",
-          source: "NASA EONET",
-          date: event.geometry?.[0]?.date || new Date().toISOString(),
-          coordinates: event.geometry?.[0]?.coordinates || [],
-          link: event.sources?.[0]?.url || "",
-          raw: event,
+    // Group events by normalized category
+    const grouped = {};
+    for (const event of allEvents) {
+      const rawCat = event.categories?.[0]?.title || "Uncategorized";
+      const category = CATEGORY_NORMALIZATION[rawCat] || rawCat;
+
+      if (!CATEGORIES.includes(category)) continue; // Skip if not one of the 8
+
+      if (!grouped[category]) grouped[category] = [];
+      grouped[category].push(event);
+    }
+
+    // Select up to 100 per relevant category
+    const selected = [];
+    for (const cat of CATEGORIES) {
+      const events = grouped[cat] || [];
+      selected.push(...events.slice(0, 100));
+    }
+
+    const writeOps = selected.map((event) => {
+      const rawCat = event.categories?.[0]?.title || "Uncategorized";
+      const category = CATEGORY_NORMALIZATION[rawCat] || rawCat;
+
+      return {
+        PutRequest: {
+          Item: {
+            id: uuidv4(),
+            title: event.title,
+            category,
+            source: "NASA EONET",
+            date: event.geometry?.[0]?.date || new Date().toISOString(),
+            coordinates: event.geometry?.[0]?.coordinates || [],
+            link: event.sources?.[0]?.url || "",
+            raw: event,
+          },
         },
-      },
-    }));
+      };
+    });
 
-    // Break into batches of 25
+    // Batch writes in chunks of 25
     const batches = [];
     for (let i = 0; i < writeOps.length; i += 25) {
       batches.push(writeOps.slice(i, i + 25));
     }
 
-    // Parallel batch writes (much faster)
     await Promise.all(
       batches.map((batch) =>
         dynamo
@@ -44,10 +86,10 @@ module.exports.ingest = async () => {
       )
     );
 
-    console.log(`Ingested ${events.length} events`);
+    console.log(`Ingested ${selected.length} balanced events`);
     return {
       statusCode: 200,
-      body: JSON.stringify({ message: `Ingested ${events.length} events` }),
+      body: JSON.stringify({ message: `Ingested ${selected.length} balanced events` }),
     };
   } catch (err) {
     console.error("Ingestion failed:", err);
@@ -58,29 +100,23 @@ module.exports.ingest = async () => {
   }
 };
 
-module.exports.getEvents = async (event) => {
-  const { category, limit } = event.queryStringParameters || {};
-  const parsedLimit = limit ? parseInt(limit) : 20;
-
-  const params = {
-    TableName: process.env.TABLE_NAME,
-  };
-
-  if (category && category !== 'All') {
-    params.FilterExpression = "#cat = :c";
-    params.ExpressionAttributeNames = {
-      "#cat": "category"
-    };
-    params.ExpressionAttributeValues = {
-      ":c": category
-    };
-  }
+module.exports.getEvents = async () => {
+  const maxPerCategory = 100;
+  const allData = [];
 
   try {
-    const data = await dynamo.scan(params).promise();
+    // Scan each category individually
+    for (const category of CATEGORIES) {
+      const params = {
+        TableName: process.env.TABLE_NAME,
+        FilterExpression: "category = :c",
+        ExpressionAttributeValues: { ":c": category },
+        Limit: maxPerCategory,
+      };
 
-    // ✅ Apply the limit *after* filtering
-    const limited = data.Items.slice(0, parsedLimit);
+      const res = await dynamo.scan(params).promise();
+      allData.push(...res.Items);
+    }
 
     return {
       statusCode: 200,
@@ -88,14 +124,13 @@ module.exports.getEvents = async (event) => {
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*",
       },
-      body: JSON.stringify(limited),
+      body: JSON.stringify(allData),
     };
   } catch (err) {
-    console.error("Error fetching events", err);
+    console.error("Error fetching balanced events", err);
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: "Failed to fetch events" }),
+      body: JSON.stringify({ error: "Failed to fetch balanced events" }),
     };
   }
 };
-
