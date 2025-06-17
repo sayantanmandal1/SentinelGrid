@@ -37,7 +37,7 @@ functions:
   ingestEvents:
     handler: handler.ingest
     events:
-      - schedule: rate(1 hour)
+      - schedule: rate(3 hours)
 
   getEvents:
     handler: handler.getEvents
@@ -67,3 +67,11 @@ resources:
           - AttributeName: id
             KeyType: HASH
         BillingMode: PAY_PER_REQUEST
+
+plugins:
+  - serverless-prune-plugin
+
+custom:
+  prune:
+    automatic: true
+    number: 1  # Keep only the most recent deployment

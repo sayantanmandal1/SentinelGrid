@@ -4,8 +4,11 @@
   "description": "Ingest global disaster events into DynamoDB",
   "main": "handler.js",
   "dependencies": {
+    "aws-sdk": "^2.1483.0",
     "axios": "^1.6.0",
-    "uuid": "^9.0.0",
-    "aws-sdk": "^2.1483.0"
+    "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "serverless-prune-plugin": "^2.1.0"
   }
 }
