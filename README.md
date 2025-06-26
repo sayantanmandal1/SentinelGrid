@@ -1,118 +1,204 @@
-# SentinelGrid Ingestor
+<p align="center">
+  <img src="https://i.imgur.com/RkWeNgP.png" width="20%" height="20%" alt="SentinelGrid Logo"/>
+</p>
 
-This project ingests and serves global natural event data from the [NASA EONET API](https://eonet.gsfc.nasa.gov/). It uses AWS Lambda functions to:
-- Ingest events hourly into a DynamoDB table (`SentinelEventsV2`).
-- Serve stored events via an HTTP endpoint using API Gateway.
+# 🛰️ SentinelGrid - Real-time Global Event Monitoring & Visualization Platform
 
----
-
-## 🌍 Features
-
-- Scheduled ingestion of up to 100 events per category (8 categories total).
-- Normalization of category names to frontend-compatible format.
-- Data stored in DynamoDB using batch writes.
-- REST API to retrieve stored events.
+[![AWS Lambda](https://img.shields.io/badge/AWS_Lambda-FF9900?style=for-the-badge&logo=aws-lambda&logoColor=white)](https://aws.amazon.com/lambda/)
+[![DynamoDB](https://img.shields.io/badge/Amazon%20DynamoDB-4053D6?style=for-the-badge&logo=Amazon%20DynamoDB&logoColor=white)](https://aws.amazon.com/dynamodb/)
+[![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://reactjs.org/)
+[![Serverless](https://img.shields.io/badge/Serverless-FD5750?style=for-the-badge&logo=serverless&logoColor=white)](https://www.serverless.com/)
+[![MIT License](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](LICENSE)
 
 ---
 
-## 📁 Directory Structure
+SentinelGrid is a global event monitoring platform that brings the power of NASA's EONET API to your fingertips, visualizing real-time natural events with a modern, serverless AWS stack. Built for scale, speed, and fun, this project is a hackathon and interview winner's dream!
+
+<p align="center">
+  <!-- Replace the src below with a real dashboard screenshot if available -->
+  <img src="https://i.imgur.com/Tfnewuz.png" width="80%" alt="SentinelGrid Dashboard Screenshot"/>
+</p>
+
+---
+
+## 📑 Quick Links
+
+- [Features](#-features)
+- [Architecture](#-architecture)
+- [Get Started](#-get-started)
+- [Documentation](#-documentation)
+- [Contribute](#-contribute)
+- [License](#-license)
+
+---
+
+## 🚀 Features
+
+- **Real-time tracking** of 8 natural event categories:
+  - 🔥 Wildfires
+  - 🌋 Volcanoes
+  - 🌊 Floods
+  - 🌪️ Severe Storms
+  - 🌍 Earthquakes
+  - 🏔️ Landslides
+  - ❄️ Sea and Lake Ice
+  - 🏜️ Drought
+- Interactive React dashboard with beautiful charts
+- Automated ingestion every 3 hours (set-and-forget!)
+- RESTful API for querying events by category/limit
+- Category-based filtering, stats, and latest event highlights
+
+---
+
+## 🏗️ Architecture
+
+SentinelGrid is built on a fully serverless AWS architecture:
+
+- **AWS Lambda**: Stateless compute for ingestion and API
+- **Amazon DynamoDB**: NoSQL event storage, pay-per-request
+- **API Gateway**: Secure, scalable REST API
+- **CloudWatch Events**: Scheduled Lambda triggers
+- **IAM**: Fine-grained permissions for least privilege
+- **Serverless Framework**: Infrastructure as code, easy deploys
+
+### 🔬 Lambda Functions
+
+#### 1. `ingestEvents` Lambda
+- **Trigger**: Every 3 hours (CloudWatch Events)
+- **What it does**:
+  - Fetches up to 2000 events from NASA EONET
+  - Normalizes categories for frontend compatibility
+  - Selects up to 100 events per category for balance
+  - Batches and writes events to DynamoDB (25 at a time)
+  - Logs ingestion stats to CloudWatch
+
+#### 2. `getEvents` Lambda
+- **Trigger**: HTTP GET via API Gateway
+- **What it does**:
+  - Reads from DynamoDB
+  - Supports category and limit query params
+  - CORS-enabled for frontend
+
+### 🗄️ DynamoDB Table: `SentinelEventsV2`
+- **Primary Key**: `id` (UUID)
+- **Attributes**: `title`, `category`, `source`, `date`, `coordinates`, `link`, `raw`
+- **Billing**: PAY_PER_REQUEST (cost-effective, scales to zero)
+- **IAM**: Only Lambdas can read/write, least privilege
+
+### 🔄 Data Flow
+
+1. CloudWatch triggers `ingestEvents` Lambda every 3 hours
+2. Lambda fetches, processes, and writes events to DynamoDB
+3. API Gateway routes HTTP requests to `getEvents` Lambda
+4. Lambda queries DynamoDB and returns JSON
+5. React frontend fetches and visualizes data in real time
+
+---
+
+## 🖥️ Project Structure
 
 ```
-.
-├── handler.js              # Lambda function logic (ingest + fetch)
-├── serverless.yml          # Serverless framework config
-└── README.md               # You're here!
+SentinelGrid/
+├── handler.js         # Lambda logic (ingest + API)
+├── serverless.yml     # Infra as code (Serverless Framework)
+├── frontend/          # React app (dashboard, charts)
+│   └── src/
+│       ├── App.js
+│       ├── Dashboard.js
+│       └── ...
+├── docs/              # Architecture, sequence diagrams, etc.
+├── API.md             # API documentation
+├── ROADMAP.md         # Future plans
+├── CHANGELOG.md       # Project history
+├── SECURITY.md        # Security policy
+├── CONTRIBUTING.md    # Contribution guidelines
+├── CODE_OF_CONDUCT.md # Community standards
+└── README.md
 ```
 
 ---
 
-## 🛠 Setup & Deployment
+## 🛠️ Get Started
 
-### ✅ Prerequisites
-
+**Requirements:**
 - Node.js 18+
-- AWS CLI configured (`aws configure`)
-- Serverless Framework installed (`npm install -g serverless`)
+- AWS CLI configured
+- Serverless Framework
+- (Frontend) npm
 
-### 🔧 Deploy
-
+**Setup:**
 ```bash
-sls deploy
+git clone https://github.com/yourusername/SentinelGrid.git
+cd SentinelGrid
+npm install
+cd frontend && npm install
 ```
 
-### 🔁 Ingest Data (manually)
-
+**Configure AWS:**
 ```bash
-sls invoke -f ingestEvents
+aws configure
+npm install -g serverless
 ```
 
-### 🌐 Access Events API
-
+**Deploy backend:**
 ```bash
-GET https://<your-api-id>.execute-api.us-east-1.amazonaws.com/dev/events
+serverless deploy
 ```
 
----
-
-## 🔒 IAM Permissions
-
-The Lambda functions require the following DynamoDB permissions:
-
-- `dynamodb:BatchWriteItem`
-- `dynamodb:PutItem`
-- `dynamodb:GetItem`
-- `dynamodb:Scan`
-- `dynamodb:UpdateItem`
-
-Configured in `serverless.yml` with `iamRoleStatements`.
-
----
-
-## 🧪 Test Locally
-
-Use mock AWS credentials and the Serverless offline plugin (optional).
-
+**Start frontend:**
 ```bash
-sls invoke -f ingestEvents
-sls invoke -f getEvents
+cd frontend
+npm start
 ```
 
 ---
 
-## 📊 DynamoDB Schema
+## 📚 Documentation
 
-Table: `SentinelEventsV2`
-
-| Field       | Type    | Description                      |
-|-------------|---------|----------------------------------|
-| `id`        | String  | UUID v4                          |
-| `title`     | String  | Event title                      |
-| `category`  | String  | Normalized category              |
-| `source`    | String  | Data source (e.g., NASA EONET)   |
-| `date`      | String  | ISO timestamp                    |
-| `coordinates` | List  | [Longitude, Latitude]            |
-| `link`      | String  | Source URL                       |
-| `raw`       | Map     | Full raw EONET event payload     |
+- [API Reference](./API.md)
+- [Architecture](./docs/ARCHITECTURE.md)
+- [Sequence Diagram](./docs/SEQUENCE.md)
+- [Roadmap](./ROADMAP.md)
+- [Changelog](./CHANGELOG.md)
+- [Security Policy](./SECURITY.md)
+- [Contributing](./CONTRIBUTING.md)
+- [Code of Conduct](./CODE_OF_CONDUCT.md)
 
 ---
 
-## 📅 Categories Ingested
+## 🏆 Why SentinelGrid Rocks
 
-- Wildfires
-- Volcanoes
-- Floods
-- SevereStorms
-- Earthquakes
-- Landslides
-- SeaLakeIce
-- Drought
+- **Real-world impact:** Live global event monitoring
+- **Serverless everything:** No servers to manage, ever
+- **Cost-effective:** Pay only for what you use
+- **Scalable:** Handles thousands of events, bursts, and spikes
+- **Modern stack:** AWS Lambda, DynamoDB, React, Serverless Framework
+- **Fun to build, fun to use!**
 
 ---
 
-## 📄 License
+## 📈 Future Ideas
 
-MIT License
+- Real-time WebSocket notifications
+- ML-powered event prediction
+- Mobile app integration
+- Heatmap and geospatial visualizations
+- Historical data analytics
 
 ---
 
-*Generated on 2025-06-16T12:55:42.538386 UTC*
+## 🤝 Contribute
+
+We welcome contributors! Please see [CONTRIBUTING.md](./CONTRIBUTING.md) and [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md).
+
+---
+
+## 📜 License
+
+MIT License — use, remix, and build your own SentinelGrid!
+
+---
+
+<p align="center">
+  Built with ❤️ and ☁️ by Sayantan!
+</p>
